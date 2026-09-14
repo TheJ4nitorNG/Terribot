@@ -1,0 +1,20 @@
+{
+  "name": "discbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@google/genai": "^2.10.0",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "openai": "^6.45.0"
+  }
+}
