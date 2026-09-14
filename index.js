@@ -40,7 +40,7 @@ systemPrompt = systemPrompt.trim();
 
 // Store conversation history per channel
 const conversationHistory = new Map();
-const MAX_HISTORY = 30; // Keeps the last 30 messages for context
+const MAX_HISTORY = 50; // Keeps the last 50 messages for context
 
 // Store active conversation windows to allow back-and-forth without tagging/naming
 const activeConversations = new Map();
@@ -79,7 +79,7 @@ client.on('messageCreate', async (message) => {
     if (convo) {
         const timePassed = Date.now() - convo.lastSpeechTimestamp;
         // If it's been less than 90 seconds (1.5 minutes) and fewer than 3 messages have passed
-        if (timePassed < 90000 && convo.userMessageCount < 3) {
+        if (timePassed < 35000 && convo.userMessageCount < 3) {
             isOngoingConversation = true;
             convo.userMessageCount++;
         } else {
