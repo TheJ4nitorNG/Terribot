@@ -33,7 +33,7 @@ try {
     }
     systemPrompt = systemPrompt.trim();
 } catch (err) {
-    console.error('❌ ERROR: Could not read Terri.txt file. Make sure it exists in the folder!');
+    console.error('❌ ERROR: Could not read the text file. Make sure it exists in the folder!');
     process.exit(1);
 }
 
@@ -148,8 +148,26 @@ client.on('messageCreate', async (message) => {
 
             const data = await response.json();
             
-            // extract reply based on standard response mapping (fallback if their schema slightly varies)
-            const replyText = data?.output?.text || data?.choices?.[0]?.message?.content || data?.text || "Ugh, whatever.";
+            // print exact API response to render terminal for debugging
+            console.log("Raw API Response:", JSON.stringify(data, null, 2)); 
+
+            let replyText = "Ugh, whatever.";
+
+            // safely try to extract text 
+            if (data?.output?.content?.[0]?.text) {
+                replyText = data.output.content[0].text;
+            } else if (data?.choices?.[0]?.message?.content) {
+                replyText = data.choices[0].message.content;
+            } else if (data?.text) {
+                replyText = data.text;
+            } else if (data?.output?.text) {
+                replyText = data.output.text;
+            }
+
+            // final safety check to prevent discord 50006 error
+            if (!replyText || replyText.trim() === '') {
+                replyText = "🙄 *stares at you in silence* (The API sent a blank response. Check your terminal!)";
+            }
 
             // save reply to history
             if (history.length > 0 && history[history.length - 1].role === 'assistant') {
@@ -171,5 +189,6 @@ client.on('messageCreate', async (message) => {
         }
     }
 });
+
 // wake his bitch ass up
 client.login(process.env.DISCORD_TOKEN);
