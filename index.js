@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const { Client, GatewayIntentBits } = require('discord.js');
 
-// Ensure critical environment variables are present at startup
+// ensure critical env variables are present
 if (!process.env.DISCORD_TOKEN) {
     console.error('❌ ERROR: DISCORD_TOKEN is not defined in your environment variables!');
     process.exit(1);
@@ -12,7 +12,7 @@ if (!process.env.ABLITERATION_API_KEY) {
     process.exit(1);
 }
 
-// Initialize the Discord Client
+// initialize discord client
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -21,10 +21,10 @@ const client = new Client({
     ]
 });
 
-// The Brain/Personality
+// terri's brain
 let systemPrompt = '';
 try {
-    systemPrompt = fs.readFileSync('Terri.txt', 'utf8');
+    systemPrompt = fs.readFileSync('const systemPrompt = `You are an AI.txt', 'utf8');
     if (systemPrompt.startsWith('const systemPrompt = `')) {
         systemPrompt = systemPrompt.substring('const systemPrompt = `'.length);
     }
@@ -37,11 +37,11 @@ try {
     process.exit(1);
 }
 
-// Store conversation history per channel
+// store convo history per channel
 const conversationHistory = new Map();
 const MAX_HISTORY = 6; 
 
-// Store active conversation windows
+// store active convo windows
 const activeConversations = new Map();
 
 client.once('ready', () => {
@@ -97,7 +97,7 @@ client.on('messageCreate', async (message) => {
             }
             const history = conversationHistory.get(channelId);
 
-            // Add new message
+            // new message
             if (history.length > 0 && history[history.length - 1].role === 'user') {
                 history[history.length - 1].content += `\n${promptText}`;
             } else {
@@ -107,8 +107,8 @@ client.on('messageCreate', async (message) => {
             while (history.length > MAX_HISTORY) history.shift();
             if (history.length > 0 && history[0].role === 'assistant') history.shift();
 
-            // --- FORMATTING FOR ABLITERATION.AI ---
-            // Map our simple history into their highly specific, nested JSON format
+            // formatting specifically for abliteration.ai
+            // map simple history into nested json format
             const apiInput = [
                 {
                     role: "system",
@@ -122,7 +122,7 @@ client.on('messageCreate', async (message) => {
                 }))
             ];
 
-            // Make the raw HTTP request using built-in fetch
+            // make raw HTTP request using built in fetch
             const response = await fetch("https://api.abliteration.ai/v1/responses", {
                 method: "POST",
                 headers: {
@@ -135,9 +135,9 @@ client.on('messageCreate', async (message) => {
                     input: apiInput,
                     max_output_tokens: 400,
                     model: "abliterated-model",
-                    include_reasoning: false, // Turned off reasoning so he doesn't output his internal thoughts in chat
+                    include_reasoning: false, // turned off reasoning so he doesnt explain why he said shit
                     text: { format: { type: "text" } },
-                    stream: false // Turned off stream so we get one solid chunk back
+                    stream: false // turned off stream returns solid chunk
                 })
             });
 
@@ -148,10 +148,10 @@ client.on('messageCreate', async (message) => {
 
             const data = await response.json();
             
-            // Extract the reply based on standard response mapping (fallback if their schema slightly varies)
+            // extract reply based on standard response mapping (fallback if their schema slightly varies)
             const replyText = data?.output?.text || data?.choices?.[0]?.message?.content || data?.text || "Ugh, whatever.";
 
-            // Save the bot's reply to the history
+            // save reply to history
             if (history.length > 0 && history[history.length - 1].role === 'assistant') {
                 history[history.length - 1].content += `\n${replyText}`;
             } else {
@@ -171,5 +171,5 @@ client.on('messageCreate', async (message) => {
         }
     }
 });
-
+// wake his bitch ass up
 client.login(process.env.DISCORD_TOKEN);
