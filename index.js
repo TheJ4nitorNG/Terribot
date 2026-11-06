@@ -107,7 +107,6 @@ client.on('messageCreate', async (message) => {
             while (history.length > MAX_HISTORY) history.shift();
             if (history.length > 0 && history[0].role === 'assistant') history.shift();
 
-            // formatting specifically for abliteration.ai
             // map simple history into nested json format
             const apiInput = [
                 {
@@ -133,7 +132,7 @@ client.on('messageCreate', async (message) => {
                     temperature: 0.8,
                     top_p: 1,
                     input: apiInput,
-                    max_output_tokens: 1500, // bumped up to make "thinking" room before response
+                    max_output_tokens: 4000, // bumped: let him finish his damn internal monologue
                     model: "abliterated-model",
                     text: { format: { type: "text" } },
                     stream: false 
@@ -146,16 +145,19 @@ client.on('messageCreate', async (message) => {
             }
 
             const data = await response.json();
-            console.log("Raw API Response:", JSON.stringify(data, null, 2)); 
+            // console.log("Raw API Response:", JSON.stringify(data, null, 2)); // comment this out if it clutters terminal
 
             let replyText = "";
 
-            // only grab if it is strictly a text string
+            // dig thru his fucking 'reasoning' block and grab final spoken text
             if (Array.isArray(data?.output) && data.output.length > 0) {
-                // search output array for the block that actually contains his spoken words
-                const textBlock = data.output.find(block => block.text && typeof block.text === 'string');
-                if (textBlock) {
-                    replyText = textBlock.text;
+                const contentArray = data.output[0]?.content;
+                if (Array.isArray(contentArray)) {
+                    // look specifically for the block that is NOT his internal reasoning
+                    const finalTextBlock = contentArray.find(block => block.type === 'text' || (block.text && block.type !== 'reasoning_text'));
+                    if (finalTextBlock && finalTextBlock.text) {
+                        replyText = finalTextBlock.text;
+                    }
                 }
             } 
             else if (Array.isArray(data?.choices) && data.choices.length > 0) {
@@ -165,12 +167,12 @@ client.on('messageCreate', async (message) => {
                 }
             }
 
-            // final safety check to prevent .trim() crash
+            // final safety check
             if (!replyText || typeof replyText !== 'string' || replyText.trim() === '') {
                 replyText = "🙄 *stares at you in silence* (I ran out of breath thinking about how stupid you are.)";
             }
 
-            // if model accidentally leaks its <think> tags into chat, strip them out
+            // clean up any stray <think> tags just in case
             replyText = replyText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
             // save reply to history
