@@ -118,13 +118,7 @@ client.on('messageCreate', async (message) => {
                     role: msg.role,
                     type: "message",
                     content: [{ type: "input_text", text: msg.content }]
-                })),
-                // dynamically inject at the exact moment of the request forcing the AI to skip the 4000-word brainstorming phase and just output the GODDAMN TEXT
-                {
-                    role: "system",
-                    type: "message",
-                    content: [{ type: "input_text", text: "CRITICAL OVERRIDE: Do NOT brainstorm. Do NOT draft multiple options. Output your final, in-character response immediately." }]
-                }
+                }))
             ];
 
             // make raw HTTP request using built in fetch
@@ -138,10 +132,8 @@ client.on('messageCreate', async (message) => {
                     temperature: 0.6,
                     top_p: 0.9,
                     input: apiInput,
-                    max_output_tokens: 2500, // safe headroom so it doesn't fucking crash if it thinks for a second
-                    model: "abliterated-model",
-                    include_reasoning: true, // allow internal thoughts...
-                    reasoning: { effort: "low" }, // ...but force them to be brief
+                    max_output_tokens: 8000, // BRUTE FORCE FIX: Give it massive space to finish thinking
+                    model: "abliterated-model", 
                     text: { format: { type: "text" } },
                     stream: false 
                 })
@@ -153,11 +145,11 @@ client.on('messageCreate', async (message) => {
             }
 
             const data = await response.json();
-            console.log("Raw API Response:", JSON.stringify(data, null, 2)); 
+            // console.log("Raw API Response:", JSON.stringify(data, null, 2)); 
 
             let replyText = "";
 
-            // DEEP EXTRACTION: find first standard text output
+            // DEEP EXTRACTION: Find the first standard text output, bypassing reasoning
             if (Array.isArray(data?.output)) {
                 for (const block of data.output) {
                     if (block.type === 'reasoning') continue;
@@ -183,11 +175,12 @@ client.on('messageCreate', async (message) => {
                 }
             }
 
-            // final safety check
+            // Absolute final safety check
             if (!replyText || typeof replyText !== 'string' || replyText.trim() === '') {
                 replyText = "🙄 *stares at you in silence* (You bore me.)";
             }
 
+            // Strip out <think> tags if they leak into the final output
             replyText = replyText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
             // save reply to history
@@ -211,5 +204,4 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// wake his bitch ass up
 client.login(process.env.DISCORD_TOKEN);
