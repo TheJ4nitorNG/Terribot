@@ -145,7 +145,7 @@ client.on('messageCreate', async (message) => {
             }
 
             const data = await response.json();
-            // console.log("Raw API Response:", JSON.stringify(data, null, 2)); // comment this out if it clutters terminal
+            console.log("Raw API Response:", JSON.stringify(data, null, 2)); // comment this out if it clutters terminal
 
             let replyText = "";
 
