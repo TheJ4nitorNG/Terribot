@@ -133,11 +133,10 @@ client.on('messageCreate', async (message) => {
                     temperature: 0.8,
                     top_p: 1,
                     input: apiInput,
-                    max_output_tokens: 400,
+                    max_output_tokens: 1500, // bumped up to make "thinking" room before response
                     model: "abliterated-model",
-                    include_reasoning: false, // turned off reasoning so he doesnt explain why he said shit
                     text: { format: { type: "text" } },
-                    stream: false // turned off stream returns solid chunk
+                    stream: false 
                 })
             });
 
@@ -147,27 +146,32 @@ client.on('messageCreate', async (message) => {
             }
 
             const data = await response.json();
-            
-            // print exact API response to render terminal for debugging
             console.log("Raw API Response:", JSON.stringify(data, null, 2)); 
 
-            let replyText = "Ugh, whatever.";
+            let replyText = "";
 
-            // safely try to extract text 
-            if (data?.output?.content?.[0]?.text) {
-                replyText = data.output.content[0].text;
-            } else if (data?.choices?.[0]?.message?.content) {
-                replyText = data.choices[0].message.content;
-            } else if (data?.text) {
-                replyText = data.text;
-            } else if (data?.output?.text) {
-                replyText = data.output.text;
+            // only grab if it is strictly a text string
+            if (Array.isArray(data?.output) && data.output.length > 0) {
+                // search output array for the block that actually contains his spoken words
+                const textBlock = data.output.find(block => block.text && typeof block.text === 'string');
+                if (textBlock) {
+                    replyText = textBlock.text;
+                }
+            } 
+            else if (Array.isArray(data?.choices) && data.choices.length > 0) {
+                const content = data.choices[0]?.message?.content;
+                if (typeof content === 'string') {
+                    replyText = content;
+                }
             }
 
-            // final safety check to prevent discord 50006 error
-            if (!replyText || replyText.trim() === '') {
-                replyText = "🙄 *stares at you in silence* (The API sent a blank response. Check your terminal!)";
+            // final safety check to prevent .trim() crash
+            if (!replyText || typeof replyText !== 'string' || replyText.trim() === '') {
+                replyText = "🙄 *stares at you in silence* (I ran out of breath thinking about how stupid you are.)";
             }
+
+            // if model accidentally leaks its <think> tags into chat, strip them out
+            replyText = replyText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
             // save reply to history
             if (history.length > 0 && history[history.length - 1].role === 'assistant') {
