@@ -129,13 +129,12 @@ client.on('messageCreate', async (message) => {
                     "Authorization": `Bearer ${process.env.ABLITERATION_API_KEY}`
                 },
                 body: JSON.stringify({
-                    temperature: 0.6, // LOWERED: prevents getting stuck in a fucking OCD loop
+                    temperature: 0.5,
                     top_p: 0.9,
                     input: apiInput,
-                    max_output_tokens: 1000, // LOWERED for financial reasons
+                    max_output_tokens: 500, // hard limit to stop runaway loops
                     model: "abliterated-model",
-                    include_reasoning: true,
-                    reasoning: { effort: "low" }, // forces him to stop overthinking
+                    include_reasoning: false, // COMPLETELY DISABLED THE REASONING ENGINE
                     text: { format: { type: "text" } },
                     stream: false 
                 })
@@ -151,10 +150,9 @@ client.on('messageCreate', async (message) => {
 
             let replyText = "";
 
-            // dig past 'reasoning' blocks and grab actual final text
+            // DEEP EXTRACTION: find first standard text output
             if (Array.isArray(data?.output)) {
                 for (const block of data.output) {
-                    // completely skip block if it's his internal monologue
                     if (block.type === 'reasoning') continue;
                     
                     if (block.text && typeof block.text === 'string') {
@@ -180,10 +178,9 @@ client.on('messageCreate', async (message) => {
 
             // final safety check
             if (!replyText || typeof replyText !== 'string' || replyText.trim() === '') {
-                replyText = "🙄 *stares at you in silence* (I'm too bored to even reply.)";
+                replyText = "🙄 *stares at you in silence* (I have literally nothing to say to you.)";
             }
 
-            // clean up any stray <think> tags just in case
             replyText = replyText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
             // save reply to history
