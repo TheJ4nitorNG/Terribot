@@ -129,11 +129,13 @@ client.on('messageCreate', async (message) => {
                     "Authorization": `Bearer ${process.env.ABLITERATION_API_KEY}`
                 },
                 body: JSON.stringify({
-                    temperature: 0.8,
-                    top_p: 1,
+                    temperature: 0.6, // LOWERED: prevents getting stuck in a fucking OCD loop
+                    top_p: 0.9,
                     input: apiInput,
-                    max_output_tokens: 4000, // bumped: let him finish his damn internal monologue
+                    max_output_tokens: 1000, // LOWERED for financial reasons
                     model: "abliterated-model",
+                    include_reasoning: true,
+                    reasoning: { effort: "low" }, // forces him to stop overthinking
                     text: { format: { type: "text" } },
                     stream: false 
                 })
@@ -145,22 +147,31 @@ client.on('messageCreate', async (message) => {
             }
 
             const data = await response.json();
-            console.log("Raw API Response:", JSON.stringify(data, null, 2)); // comment this out if it clutters terminal
+            console.log("Raw API Response:", JSON.stringify(data, null, 2)); 
 
             let replyText = "";
 
-            // dig thru his fucking 'reasoning' block and grab final spoken text
-            if (Array.isArray(data?.output) && data.output.length > 0) {
-                const contentArray = data.output[0]?.content;
-                if (Array.isArray(contentArray)) {
-                    // look specifically for the block that is NOT his internal reasoning
-                    const finalTextBlock = contentArray.find(block => block.type === 'text' || (block.text && block.type !== 'reasoning_text'));
-                    if (finalTextBlock && finalTextBlock.text) {
-                        replyText = finalTextBlock.text;
+            // dig past 'reasoning' blocks and grab actual final text
+            if (Array.isArray(data?.output)) {
+                for (const block of data.output) {
+                    // completely skip block if it's his internal monologue
+                    if (block.type === 'reasoning') continue;
+                    
+                    if (block.text && typeof block.text === 'string') {
+                        replyText = block.text;
+                        break;
+                    }
+                    if (Array.isArray(block.content)) {
+                        const txt = block.content.find(c => c.type === 'text' || (c.text && c.type !== 'reasoning_text'));
+                        if (txt && txt.text) {
+                            replyText = txt.text;
+                            break;
+                        }
                     }
                 }
             } 
-            else if (Array.isArray(data?.choices) && data.choices.length > 0) {
+            
+            if (!replyText && Array.isArray(data?.choices) && data.choices.length > 0) {
                 const content = data.choices[0]?.message?.content;
                 if (typeof content === 'string') {
                     replyText = content;
@@ -169,7 +180,7 @@ client.on('messageCreate', async (message) => {
 
             // final safety check
             if (!replyText || typeof replyText !== 'string' || replyText.trim() === '') {
-                replyText = "🙄 *stares at you in silence* (I ran out of breath thinking about how stupid you are.)";
+                replyText = "🙄 *stares at you in silence* (I'm too bored to even reply.)";
             }
 
             // clean up any stray <think> tags just in case
