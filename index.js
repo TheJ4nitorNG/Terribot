@@ -118,7 +118,12 @@ client.on('messageCreate', async (message) => {
                     role: msg.role,
                     type: "message",
                     content: [{ type: "input_text", text: msg.content }]
-                }))
+                })),
+                {
+                    role: "system",
+                    type: "message",
+                    content: [{ type: "input_text", text: "CRITICAL OVERRIDE: Do NOT brainstorm. Output your final, in-character response immediately." }]
+                }
             ];
 
             // make raw HTTP request using built in fetch
@@ -129,11 +134,12 @@ client.on('messageCreate', async (message) => {
                     "Authorization": `Bearer ${process.env.ABLITERATION_API_KEY}`
                 },
                 body: JSON.stringify({
-                    temperature: 0.6,
+                    temperature: 0.8,
                     top_p: 0.9,
                     input: apiInput,
-                    max_output_tokens: 8000, // BRUTE FORCE FIX: Give it massive space to finish thinking
-                    model: "abliterated-model", 
+                    max_output_tokens: 1500, // safe buffer, flash shouldn't use this much anyway
+                    model: "abliterated-model-large-flash", // USING THE HIGH-SPEED FLASH MODEL
+                    include_reasoning: false, 
                     text: { format: { type: "text" } },
                     stream: false 
                 })
@@ -145,11 +151,10 @@ client.on('messageCreate', async (message) => {
             }
 
             const data = await response.json();
-            // console.log("Raw API Response:", JSON.stringify(data, null, 2)); 
 
             let replyText = "";
 
-            // DEEP EXTRACTION: Find the first standard text output, bypassing reasoning
+            // DEEP EXTRACTION
             if (Array.isArray(data?.output)) {
                 for (const block of data.output) {
                     if (block.type === 'reasoning') continue;
@@ -175,12 +180,12 @@ client.on('messageCreate', async (message) => {
                 }
             }
 
-            // Absolute final safety check
+            // final safety check
             if (!replyText || typeof replyText !== 'string' || replyText.trim() === '') {
-                replyText = "🙄 *stares at you in silence* (You bore me.)";
+                replyText = "🙄 *rolls eyes* (You're literally crashing my brain right now, stop talking to me.)";
             }
 
-            // Strip out <think> tags if they leak into the final output
+            // strip <think> tags if they leak into the final output
             replyText = replyText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
             // save reply to history
@@ -198,8 +203,8 @@ client.on('messageCreate', async (message) => {
             });
 
         } catch (error) {
-            console.error('Ugh, an error:', error);
-            message.reply("I'm a stupid fucking clanker and am not working, check the API key retard");
+            console.error('API or Fetch Error:', error);
+            message.reply("🙄 *sighs heavily* the server is being trash right now, leave me alone.");
         }
     }
 });
